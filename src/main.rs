@@ -72,6 +72,12 @@ mod lexical_analyzer {
                 TokenKind::RightParen => write!(f, "RIGHT_PAREN {character} null"),
                 TokenKind::LeftBrace => write!(f, "LEFT_BRACE {character} null"),
                 TokenKind::RightBrace => write!(f, "RIGHT_BRACE {character} null"),
+                TokenKind::Star => write!(f, "STAR {character} null"),
+                TokenKind::Dot => write!(f, "DOT {character} null"),
+                TokenKind::Comma => write!(f, "COMMA {character} null"),
+                TokenKind::Plus => write!(f, "PLUS {character} null"),
+                TokenKind::Minus => write!(f, "MINUS {character} null"),
+                TokenKind::Semicolon => write!(f, "SEMICOLON {character} null"),
             }
         }
     }
@@ -82,6 +88,12 @@ mod lexical_analyzer {
         RightParen,
         LeftBrace,
         RightBrace,
+        Star,
+        Dot,
+        Comma,
+        Plus,
+        Minus,
+        Semicolon,
     }
 
     #[derive(Debug)]
@@ -111,6 +123,30 @@ mod lexical_analyzer {
                 })),
                 '}' => Some(Ok(Token {
                     kind: TokenKind::RightBrace,
+                    character: c,
+                })),
+                '*' => Some(Ok(Token {
+                    kind: TokenKind::Star,
+                    character: c,
+                })),
+                '.' => Some(Ok(Token {
+                    kind: TokenKind::Dot,
+                    character: c,
+                })),
+                ',' => Some(Ok(Token {
+                    kind: TokenKind::Comma,
+                    character: c,
+                })),
+                '+' => Some(Ok(Token {
+                    kind: TokenKind::Plus,
+                    character: c,
+                })),
+                '-' => Some(Ok(Token {
+                    kind: TokenKind::Minus,
+                    character: c,
+                })),
+                ';' => Some(Ok(Token {
+                    kind: TokenKind::Semicolon,
                     character: c,
                 })),
                 _ => None,
