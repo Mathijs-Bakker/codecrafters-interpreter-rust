@@ -13,7 +13,7 @@ fn main() {
 
     match command.as_str() {
         "tokenize" => {
-            let mut scanner_error = false;
+            eprintln!("Start tokenizing.");
 
             let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
                 eprintln!("Failed to read file {}", filename);
@@ -26,18 +26,13 @@ fn main() {
                 let token = match token {
                     Ok(t) => t,
                     Err(e) => {
-                        println!("{e}");
-                        scanner_error = true;
+                        eprintln!("{e:?}");
                         continue;
                     }
                 };
                 println!("{token}");
             }
             println!("EOF  null");
-
-            if scanner_error {
-                std::process::exit(65);
-            }
         }
         _ => {
             eprintln!("Unknown command: {}", command);
@@ -102,19 +97,7 @@ mod lexical_analyzer {
     }
 
     #[derive(Debug)]
-    pub struct SingleTokenError {
-        character: char,
-    }
-
-    impl fmt::Display for SingleTokenError {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(
-                f,
-                "[line 1] Error: Unexpected character: {}",
-                self.character
-            )
-        }
-    }
+    pub struct SingleTokenError {}
 
     impl<'a> Iterator for Scanner<'a> {
         type Item = Result<Token, SingleTokenError>;
@@ -164,7 +147,7 @@ mod lexical_analyzer {
                     kind: TokenKind::Semicolon,
                     character: c,
                 })),
-                c => Some(Err(SingleTokenError { character: c })),
+                _ => None,
             }
         }
     }
