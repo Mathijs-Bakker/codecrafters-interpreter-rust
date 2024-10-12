@@ -13,7 +13,6 @@ fn main() {
 
     match command.as_str() {
         "tokenize" => {
-            // You can use print statements as follows for debugging, they'll be visible when running tests.
             eprintln!("Start tokenizing.");
 
             let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
@@ -21,14 +20,89 @@ fn main() {
                 String::new()
             });
 
-            if !file_contents.is_empty() {
-                panic!("Scanner not implemented");
-            } else {
-                println!("EOF  null"); // Placeholder, remove this line when implementing the scanner
+            let tokens = lexical_analyzer::Scanner::new(&file_contents);
+
+            for token in tokens {
+                let token = match token {
+                    Ok(t) => t,
+                    Err(e) => {
+                        eprintln!("{e:?}");
+                        continue;
+                    }
+                };
+                println!("{token}");
             }
+            println!("EOF  null");
         }
         _ => {
             eprintln!("Unknown command: {}", command);
+        }
+    }
+}
+
+mod lexical_analyzer {
+    use std::fmt;
+
+    #[derive(Debug)]
+    pub struct Scanner<'a> {
+        file_content: &'a str,
+        idx: usize,
+    }
+
+    impl<'a> Scanner<'a> {
+        pub fn new(file_content: &'a str) -> Self {
+            Self {
+                file_content,
+                idx: 0,
+            }
+        }
+    }
+
+    #[derive(Debug)]
+    pub struct Token {
+        kind: TokenKind,
+        character: char,
+    }
+
+    impl fmt::Display for Token {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let character = self.character;
+            match self.kind {
+                TokenKind::LeftParen => write!(f, "LEFT_PAREN {character} null"),
+                TokenKind::RightParen => write!(f, "RIGHT_PAREN {character} null"),
+            }
+        }
+    }
+
+    #[derive(Debug)]
+    enum TokenKind {
+        LeftParen,
+        RightParen,
+    }
+
+    #[derive(Debug)]
+    pub enum Error {
+        SingleTokenError,
+    }
+
+    impl<'a> Iterator for Scanner<'a> {
+        type Item = Result<Token, Error>;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            let c = self.file_content.chars().nth(self.idx)?;
+            self.idx += 1;
+
+            match c {
+                '(' => Some(Ok(Token {
+                    kind: TokenKind::LeftParen,
+                    character: c,
+                })),
+                ')' => Some(Ok(Token {
+                    kind: TokenKind::RightParen,
+                    character: c,
+                })),
+                _ => None,
+            }
         }
     }
 }
