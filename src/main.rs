@@ -70,6 +70,8 @@ mod lexical_analyzer {
             match self.kind {
                 TokenKind::LeftParen => write!(f, "LEFT_PAREN {character} null"),
                 TokenKind::RightParen => write!(f, "RIGHT_PAREN {character} null"),
+                TokenKind::LeftBrace => write!(f, "LEFT_BRACE {character} null"),
+                TokenKind::RightBrace => write!(f, "RIGHT_BRACE {character} null"),
             }
         }
     }
@@ -78,6 +80,8 @@ mod lexical_analyzer {
     enum TokenKind {
         LeftParen,
         RightParen,
+        LeftBrace,
+        RightBrace,
     }
 
     #[derive(Debug)]
@@ -99,6 +103,14 @@ mod lexical_analyzer {
                 })),
                 ')' => Some(Ok(Token {
                     kind: TokenKind::RightParen,
+                    character: c,
+                })),
+                '{' => Some(Ok(Token {
+                    kind: TokenKind::LeftBrace,
+                    character: c,
+                })),
+                '}' => Some(Ok(Token {
+                    kind: TokenKind::RightBrace,
                     character: c,
                 })),
                 _ => None,
