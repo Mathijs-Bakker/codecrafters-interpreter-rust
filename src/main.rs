@@ -26,7 +26,7 @@ fn main() {
                 let token = match token {
                     Ok(t) => t,
                     Err(e) => {
-                        println!("{e}");
+                        eprintln!("{e}");
                         scanner_error = true;
                         continue;
                     }
