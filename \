@@ -51,21 +51,25 @@ mod lexical_analyzer {
     #[derive(Debug)]
     pub struct Scanner<'a> {
         file_content: &'a str,
+        idx: usize,
     }
 
     impl<'a> Scanner<'a> {
         pub fn new(file_content: &'a str) -> Self {
-            Self { file_content }
+            Self {
+                file_content,
+                idx: 0,
+            }
         }
     }
 
     #[derive(Debug)]
-    pub struct Token<'a> {
+    pub struct Token {
         kind: TokenKind,
-        character: &'a str,
+        character: char,
     }
 
-    impl fmt::Display for Token<'_> {
+    impl fmt::Display for Token {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             let character = self.character;
             match self.kind {
@@ -117,25 +121,17 @@ mod lexical_analyzer {
     }
 
     impl<'a> Iterator for Scanner<'a> {
-        type Item = Result<Token<'a>, SingleTokenError>;
+        type Item = Result<Token, SingleTokenError>;
 
         fn next(&mut self) -> Option<Self::Item> {
-            let mut chars = self.file_content.chars();
-            let c = chars.nth(0)?;
-            let c_str = &self.file_content[..c.len_utf8()];
-
-            self.file_content = chars.as_str();
+            let c = self.file_content.chars().nth(self.idx)?;
+            self.idx += 1;
 
             enum LongLexemes {
                 Equal(),
             }
 
-            let build_token = move |kind: TokenKind| {
-                Some(Ok(Token {
-                    kind,
-                    character: c_str,
-                }))
-            };
+            let build_token = move |kind: TokenKind| Some(Ok(Token { kind, character: c }));
 
             let longer_lexemes = match c {
                 '(' => return build_token(TokenKind::LeftParen),
@@ -154,20 +150,15 @@ mod lexical_analyzer {
 
             match longer_lexemes {
                 LongLexemes::Equal() => {
-                    if !self.file_content.is_empty() {
-                        let c_next = chars.nth(0)?;
+                    let c_next = self.file_content.chars().nth(self.idx + 1)?;
+                    println!("{c_next}");
 
-                        if c_next == '=' {
-                            self.file_content = &self.file_content[1..];
-                            Some(Ok(Token {
-                                kind: TokenKind::EqualEqual,
-                                character: "==",
-                            }))
-                        } else {
-                            build_token(TokenKind::Equal)
+                    match c_next {
+                        '=' => {
+                            self.idx += 2;
+                            build_token(TokenKind::EqualEqual);
                         }
-                    } else {
-                        build_token(TokenKind::Equal)
+                         => return build_token(TokenKind::Equal),
                     }
                 }
             }
