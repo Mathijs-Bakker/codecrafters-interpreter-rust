@@ -81,6 +81,8 @@ mod lexical_analyzer {
                 TokenKind::Semicolon => write!(f, "SEMICOLON {character} null"),
                 TokenKind::Equal => write!(f, "EQUAL {character} null"),
                 TokenKind::EqualEqual => write!(f, "EQUAL_EQUAL {character} null"),
+                TokenKind::Bang => write!(f, "BANG {character} null"),
+                TokenKind::BangEqual => write!(f, "BANG_EQUAL {character} null"),
             }
         }
     }
@@ -99,6 +101,8 @@ mod lexical_analyzer {
         Semicolon,
         Equal,
         EqualEqual,
+        Bang,
+        BangEqual,
     }
 
     #[derive(Debug)]
@@ -121,13 +125,13 @@ mod lexical_analyzer {
 
         fn next(&mut self) -> Option<Self::Item> {
             let mut chars = self.file_content.chars();
-            let c = chars.nth(0)?;
+            let c = chars.next()?;
             let c_str = &self.file_content[..c.len_utf8()];
-
+            let chars_remaining = self.file_content;
             self.file_content = chars.as_str();
 
             enum LongLexemes {
-                Equal(),
+                OperatorOrSingleChar(TokenKind, TokenKind),
             }
 
             let build_token = move |kind: TokenKind| {
@@ -148,26 +152,23 @@ mod lexical_analyzer {
                 '+' => return build_token(TokenKind::Plus),
                 '-' => return build_token(TokenKind::Minus),
                 ';' => return build_token(TokenKind::Semicolon),
-                '=' => LongLexemes::Equal(),
+                '!' => LongLexemes::OperatorOrSingleChar(TokenKind::BangEqual, TokenKind::Bang),
+                '=' => LongLexemes::OperatorOrSingleChar(TokenKind::EqualEqual, TokenKind::Equal),
                 c => return Some(Err(SingleTokenError { character: c })),
             };
 
             match longer_lexemes {
-                LongLexemes::Equal() => {
-                    if !self.file_content.is_empty() {
-                        let c_next = chars.nth(0)?;
+                LongLexemes::OperatorOrSingleChar(operator, single_char) => {
+                    if self.file_content.starts_with('=') {
+                        let operator_str = &chars_remaining[..2];
+                        self.file_content = &self.file_content[1..];
 
-                        if c_next == '=' {
-                            self.file_content = &self.file_content[1..];
-                            Some(Ok(Token {
-                                kind: TokenKind::EqualEqual,
-                                character: "==",
-                            }))
-                        } else {
-                            build_token(TokenKind::Equal)
-                        }
+                        Some(Ok(Token {
+                            kind: operator,
+                            character: operator_str,
+                        }))
                     } else {
-                        build_token(TokenKind::Equal)
+                        build_token(single_char)
                     }
                 }
             }
