@@ -87,6 +87,7 @@ mod lexical_analyzer {
                 TokenKind::GreaterEqual => write!(f, "GREATER_EQUAL {character} null"),
                 TokenKind::Less => write!(f, "LESS {character} null"),
                 TokenKind::LessEqual => write!(f, "LESS_EQUAL {character} null"),
+                TokenKind::Slash => write!(f, "SLASH {character} null"),
             }
         }
     }
@@ -111,6 +112,7 @@ mod lexical_analyzer {
         Less,
         GreaterEqual,
         Greater,
+        Slash,
     }
 
     #[derive(Debug)]
@@ -132,55 +134,77 @@ mod lexical_analyzer {
         type Item = Result<Token<'a>, SingleTokenError>;
 
         fn next(&mut self) -> Option<Self::Item> {
-            let mut chars = self.file_content.chars();
-            let c = chars.next()?;
-            let c_str = &self.file_content[..c.len_utf8()];
-            let chars_remaining = self.file_content;
-            self.file_content = chars.as_str();
+            loop {
+                let mut chars = self.file_content.chars();
+                let c = chars.next()?;
+                let c_str = &self.file_content[..c.len_utf8()];
+                let chars_remaining = self.file_content;
+                self.file_content = chars.as_str();
 
-            enum LongLexemes {
-                OperatorOrSingleChar(TokenKind, TokenKind),
-            }
-
-            let build_token = move |kind: TokenKind| {
-                Some(Ok(Token {
-                    kind,
-                    character: c_str,
-                }))
-            };
-
-            let longer_lexemes = match c {
-                '(' => return build_token(TokenKind::LeftParen),
-                ')' => return build_token(TokenKind::RightParen),
-                '{' => return build_token(TokenKind::LeftBrace),
-                '}' => return build_token(TokenKind::RightBrace),
-                '*' => return build_token(TokenKind::Star),
-                '.' => return build_token(TokenKind::Dot),
-                ',' => return build_token(TokenKind::Comma),
-                '+' => return build_token(TokenKind::Plus),
-                '-' => return build_token(TokenKind::Minus),
-                ';' => return build_token(TokenKind::Semicolon),
-                '!' => LongLexemes::OperatorOrSingleChar(TokenKind::BangEqual, TokenKind::Bang),
-                '<' => LongLexemes::OperatorOrSingleChar(TokenKind::LessEqual, TokenKind::Less),
-                '>' => {
-                    LongLexemes::OperatorOrSingleChar(TokenKind::GreaterEqual, TokenKind::Greater)
+                enum LongLexemes {
+                    OperatorOrSingleChar(TokenKind, TokenKind),
+                    Slash,
                 }
-                '=' => LongLexemes::OperatorOrSingleChar(TokenKind::EqualEqual, TokenKind::Equal),
-                c => return Some(Err(SingleTokenError { character: c })),
-            };
 
-            match longer_lexemes {
-                LongLexemes::OperatorOrSingleChar(operator, single_char) => {
-                    if self.file_content.starts_with('=') {
-                        let operator_str = &chars_remaining[..2];
-                        self.file_content = &self.file_content[1..];
+                let build_token = move |kind: TokenKind| {
+                    Some(Ok(Token {
+                        kind,
+                        character: c_str,
+                    }))
+                };
 
-                        Some(Ok(Token {
-                            kind: operator,
-                            character: operator_str,
-                        }))
-                    } else {
-                        build_token(single_char)
+                let longer_lexemes = match c {
+                    '(' => return build_token(TokenKind::LeftParen),
+                    ')' => return build_token(TokenKind::RightParen),
+                    '{' => return build_token(TokenKind::LeftBrace),
+                    '}' => return build_token(TokenKind::RightBrace),
+                    '*' => return build_token(TokenKind::Star),
+                    '.' => return build_token(TokenKind::Dot),
+                    ',' => return build_token(TokenKind::Comma),
+                    '+' => return build_token(TokenKind::Plus),
+                    '-' => return build_token(TokenKind::Minus),
+                    ';' => return build_token(TokenKind::Semicolon),
+                    '!' => LongLexemes::OperatorOrSingleChar(TokenKind::BangEqual, TokenKind::Bang),
+                    '<' => LongLexemes::OperatorOrSingleChar(TokenKind::LessEqual, TokenKind::Less),
+                    '>' => LongLexemes::OperatorOrSingleChar(
+                        TokenKind::GreaterEqual,
+                        TokenKind::Greater,
+                    ),
+
+                    '=' => {
+                        LongLexemes::OperatorOrSingleChar(TokenKind::EqualEqual, TokenKind::Equal)
+                    }
+                    '/' => LongLexemes::Slash,
+                    c => return Some(Err(SingleTokenError { character: c })),
+                };
+
+                match longer_lexemes {
+                    LongLexemes::OperatorOrSingleChar(operator, single_char) => {
+                        if self.file_content.starts_with('=') {
+                            let operator_str = &chars_remaining[..2];
+                            self.file_content = &self.file_content[1..];
+
+                            return Some(Ok(Token {
+                                kind: operator,
+                                character: operator_str,
+                            }));
+                        } else {
+                            return build_token(single_char);
+                        }
+                    }
+                    LongLexemes::Slash => {
+                        if self.file_content.starts_with('/') {
+                            // Is comment
+                            let line_end = self
+                                .file_content
+                                .find('\n')
+                                .unwrap_or(self.file_content.len());
+                            self.file_content = &self.file_content[line_end..];
+
+                            continue;
+                        } else {
+                            return build_token(TokenKind::Slash);
+                        }
                     }
                 }
             }
