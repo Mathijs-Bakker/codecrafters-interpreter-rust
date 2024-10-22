@@ -175,6 +175,7 @@ mod lexical_analyzer {
                         LongLexemes::OperatorOrSingleChar(TokenKind::EqualEqual, TokenKind::Equal)
                     }
                     '/' => LongLexemes::Slash,
+                    c if c.is_whitespace() => continue,
                     c => return Some(Err(SingleTokenError { character: c })),
                 };
 
