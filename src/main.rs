@@ -83,6 +83,10 @@ mod lexical_analyzer {
                 TokenKind::EqualEqual => write!(f, "EQUAL_EQUAL {character} null"),
                 TokenKind::Bang => write!(f, "BANG {character} null"),
                 TokenKind::BangEqual => write!(f, "BANG_EQUAL {character} null"),
+                TokenKind::Greater => write!(f, "GREATER {character} null"),
+                TokenKind::GreaterEqual => write!(f, "GREATER_EQUAL {character} null"),
+                TokenKind::Less => write!(f, "LESS {character} null"),
+                TokenKind::LessEqual => write!(f, "LESS_EQUAL {character} null"),
             }
         }
     }
@@ -103,6 +107,10 @@ mod lexical_analyzer {
         EqualEqual,
         Bang,
         BangEqual,
+        LessEqual,
+        Less,
+        GreaterEqual,
+        Greater,
     }
 
     #[derive(Debug)]
@@ -153,6 +161,10 @@ mod lexical_analyzer {
                 '-' => return build_token(TokenKind::Minus),
                 ';' => return build_token(TokenKind::Semicolon),
                 '!' => LongLexemes::OperatorOrSingleChar(TokenKind::BangEqual, TokenKind::Bang),
+                '<' => LongLexemes::OperatorOrSingleChar(TokenKind::LessEqual, TokenKind::Less),
+                '>' => {
+                    LongLexemes::OperatorOrSingleChar(TokenKind::GreaterEqual, TokenKind::Greater)
+                }
                 '=' => LongLexemes::OperatorOrSingleChar(TokenKind::EqualEqual, TokenKind::Equal),
                 c => return Some(Err(SingleTokenError { character: c })),
             };
