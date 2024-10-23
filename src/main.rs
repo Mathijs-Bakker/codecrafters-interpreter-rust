@@ -50,12 +50,16 @@ mod lexical_analyzer {
 
     #[derive(Debug)]
     pub struct Scanner<'a> {
-        file_content: &'a str,
+        source_code: &'a str,
+        lox_remaining: &'a str,
     }
 
     impl<'a> Scanner<'a> {
-        pub fn new(file_content: &'a str) -> Self {
-            Self { file_content }
+        pub fn new(input: &'a str) -> Self {
+            Self {
+                source_code: input,
+                lox_remaining: input,
+            }
         }
     }
 
@@ -117,15 +121,28 @@ mod lexical_analyzer {
 
     #[derive(Debug)]
     pub struct SingleTokenError {
-        character: char,
+        token: char,
+
+        source_code: String,
+        source_code_idx: usize,
+    }
+
+    impl SingleTokenError {
+        pub fn line(&self) -> usize {
+            let line_start = 1;
+
+            let code_span_to_error = &self.source_code[..self.source_code_idx + line_start];
+            code_span_to_error.lines().count()
+        }
     }
 
     impl fmt::Display for SingleTokenError {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             write!(
                 f,
-                "[line 1] Error: Unexpected character: {}",
-                self.character
+                "[line {}] Error: Unexpected character: {}",
+                self.line(),
+                self.token,
             )
         }
     }
@@ -135,11 +152,11 @@ mod lexical_analyzer {
 
         fn next(&mut self) -> Option<Self::Item> {
             loop {
-                let mut chars = self.file_content.chars();
+                let mut chars = self.lox_remaining.chars();
                 let c = chars.next()?;
-                let c_str = &self.file_content[..c.len_utf8()];
-                let chars_remaining = self.file_content;
-                self.file_content = chars.as_str();
+                let c_str = &self.lox_remaining[..c.len_utf8()];
+                let chars_remaining = self.lox_remaining;
+                self.lox_remaining = chars.as_str();
 
                 enum LongLexemes {
                     OperatorOrSingleChar(TokenKind, TokenKind),
@@ -176,14 +193,20 @@ mod lexical_analyzer {
                     }
                     '/' => LongLexemes::Slash,
                     c if c.is_whitespace() => continue,
-                    c => return Some(Err(SingleTokenError { character: c })),
+                    c => {
+                        return Some(Err(SingleTokenError {
+                            token: c,
+                            source_code: self.source_code.to_string(),
+                            source_code_idx: self.source_code.len() - chars_remaining.len(),
+                        }))
+                    }
                 };
 
                 match longer_lexemes {
                     LongLexemes::OperatorOrSingleChar(operator, single_char) => {
-                        if self.file_content.starts_with('=') {
+                        if self.lox_remaining.starts_with('=') {
                             let operator_str = &chars_remaining[..2];
-                            self.file_content = &self.file_content[1..];
+                            self.lox_remaining = &self.lox_remaining[1..];
 
                             return Some(Ok(Token {
                                 kind: operator,
@@ -194,13 +217,13 @@ mod lexical_analyzer {
                         }
                     }
                     LongLexemes::Slash => {
-                        if self.file_content.starts_with('/') {
+                        if self.lox_remaining.starts_with('/') {
                             // Is comment
                             let line_end = self
-                                .file_content
+                                .lox_remaining
                                 .find('\n')
-                                .unwrap_or(self.file_content.len());
-                            self.file_content = &self.file_content[line_end..];
+                                .unwrap_or(self.lox_remaining.len());
+                            self.lox_remaining = &self.lox_remaining[line_end..];
 
                             continue;
                         } else {
