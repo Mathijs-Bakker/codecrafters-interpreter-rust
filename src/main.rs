@@ -46,7 +46,7 @@ fn main() {
 }
 
 mod lexical_analyzer {
-    use std::fmt;
+    use std::{error::Error, fmt};
 
     #[derive(Debug)]
     pub struct Scanner<'a> {
@@ -92,6 +92,9 @@ mod lexical_analyzer {
                 TokenKind::Less => write!(f, "LESS {character} null"),
                 TokenKind::LessEqual => write!(f, "LESS_EQUAL {character} null"),
                 TokenKind::Slash => write!(f, "SLASH {character} null"),
+                TokenKind::String => {
+                    write!(f, "STRING {character} {}", character.trim_matches('"'))
+                }
             }
         }
     }
@@ -117,6 +120,7 @@ mod lexical_analyzer {
         GreaterEqual,
         Greater,
         Slash,
+        String,
     }
 
     #[derive(Debug)]
@@ -147,8 +151,34 @@ mod lexical_analyzer {
         }
     }
 
+    impl std::error::Error for SingleTokenError {}
+
+    #[derive(Debug)]
+    pub struct UnterminatedStringError {
+        // token: char,
+        source_code: String,
+        source_code_idx: usize,
+    }
+
+    impl UnterminatedStringError {
+        pub fn line(&self) -> usize {
+            let line_start = 1;
+
+            let code_span_to_error = &self.source_code[..self.source_code_idx + line_start];
+            code_span_to_error.lines().count()
+        }
+    }
+
+    impl fmt::Display for UnterminatedStringError {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "[line {}] Error: Unterminated string.", self.line(),)
+        }
+    }
+
+    impl std::error::Error for UnterminatedStringError {}
+
     impl<'a> Iterator for Scanner<'a> {
-        type Item = Result<Token<'a>, SingleTokenError>;
+        type Item = Result<Token<'a>, Box<dyn Error + Send + Sync>>;
 
         fn next(&mut self) -> Option<Self::Item> {
             loop {
@@ -161,6 +191,7 @@ mod lexical_analyzer {
                 enum LongLexemes {
                     OperatorOrSingleChar(TokenKind, TokenKind),
                     Slash,
+                    String,
                 }
 
                 let build_token = move |kind: TokenKind| {
@@ -192,13 +223,14 @@ mod lexical_analyzer {
                         LongLexemes::OperatorOrSingleChar(TokenKind::EqualEqual, TokenKind::Equal)
                     }
                     '/' => LongLexemes::Slash,
+                    '"' => LongLexemes::String,
                     c if c.is_whitespace() => continue,
                     c => {
-                        return Some(Err(SingleTokenError {
+                        return Some(Err(Box::new(SingleTokenError {
                             token: c,
                             source_code: self.source_code.to_string(),
                             source_code_idx: self.source_code.len() - chars_remaining.len(),
-                        }))
+                        })));
                     }
                 };
 
@@ -229,6 +261,30 @@ mod lexical_analyzer {
                         } else {
                             return build_token(TokenKind::Slash);
                         }
+                    }
+                    LongLexemes::String => {
+                        match self.lox_remaining.find('"') {
+                            Some(end_quote_idx) => {
+                                let n_quotes = 2;
+                                let literal = &chars_remaining[..end_quote_idx + n_quotes];
+
+                                self.lox_remaining = &chars_remaining[end_quote_idx + n_quotes..];
+
+                                return Some(Ok(Token {
+                                    kind: TokenKind::String,
+                                    character: literal,
+                                }));
+                            }
+                            None => {
+                                self.lox_remaining =
+                                    &self.lox_remaining[self.lox_remaining.len()..];
+
+                                return Some(Err(Box::new(UnterminatedStringError {
+                                    source_code: self.source_code.to_string(),
+                                    source_code_idx: self.source_code.len() - chars_remaining.len(),
+                                })));
+                            }
+                        };
                     }
                 }
             }
