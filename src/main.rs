@@ -95,6 +95,13 @@ mod lexical_analyzer {
                 TokenKind::String => {
                     write!(f, "STRING {character} {}", character.trim_matches('"'))
                 }
+                TokenKind::Number(n) => {
+                    if n == n.trunc() {
+                        write!(f, "NUMBER {character} {n}.0")
+                    } else {
+                        write!(f, "NUMBER {character} {n}")
+                    }
+                }
             }
         }
     }
@@ -121,6 +128,7 @@ mod lexical_analyzer {
         Greater,
         Slash,
         String,
+        Number(f32),
     }
 
     #[derive(Debug)]
@@ -192,6 +200,7 @@ mod lexical_analyzer {
                     OperatorOrSingleChar(TokenKind, TokenKind),
                     Slash,
                     String,
+                    Number,
                 }
 
                 let build_token = move |kind: TokenKind| {
@@ -224,6 +233,7 @@ mod lexical_analyzer {
                     }
                     '/' => LongLexemes::Slash,
                     '"' => LongLexemes::String,
+                    '0'..='9' => LongLexemes::Number,
                     c if c.is_whitespace() => continue,
                     c => {
                         return Some(Err(Box::new(SingleTokenError {
@@ -266,13 +276,13 @@ mod lexical_analyzer {
                         match self.lox_remaining.find('"') {
                             Some(end_quote_idx) => {
                                 let n_quotes = 2;
-                                let literal = &chars_remaining[..end_quote_idx + n_quotes];
+                                let string_literal = &chars_remaining[..end_quote_idx + n_quotes];
 
                                 self.lox_remaining = &chars_remaining[end_quote_idx + n_quotes..];
 
                                 return Some(Ok(Token {
                                     kind: TokenKind::String,
-                                    character: literal,
+                                    character: string_literal,
                                 }));
                             }
                             None => {
@@ -285,6 +295,26 @@ mod lexical_analyzer {
                                 })));
                             }
                         };
+                    }
+                    LongLexemes::Number => {
+                        let end_of_number = chars_remaining
+                            .find(|c| !matches!(c, '.' | '0'..='9'))
+                            .unwrap_or(chars_remaining.len());
+
+                        let mut number_literal = &chars_remaining[..end_of_number];
+
+                        let mut split = number_literal.split('.');
+
+                        if let Some(n) = split.nth(2) {
+                            number_literal = &number_literal[..n.len()];
+                        }
+
+                        self.lox_remaining = &chars_remaining[end_of_number..];
+
+                        return Some(Ok(Token {
+                            kind: TokenKind::Number(number_literal.parse().unwrap()),
+                            character: number_literal,
+                        }));
                     }
                 }
             }
