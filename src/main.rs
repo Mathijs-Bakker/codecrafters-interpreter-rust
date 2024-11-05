@@ -102,6 +102,7 @@ mod lexical_analyzer {
                         write!(f, "NUMBER {character} {n}")
                     }
                 }
+                TokenKind::Identifier => write!(f, "IDENTIFIER {character} null"),
             }
         }
     }
@@ -129,6 +130,7 @@ mod lexical_analyzer {
         Slash,
         String,
         Number(f32),
+        Identifier,
     }
 
     #[derive(Debug)]
@@ -201,6 +203,7 @@ mod lexical_analyzer {
                     Slash,
                     String,
                     Number,
+                    Identifier,
                 }
 
                 let build_token = move |kind: TokenKind| {
@@ -234,6 +237,7 @@ mod lexical_analyzer {
                     '/' => LongLexemes::Slash,
                     '"' => LongLexemes::String,
                     '0'..='9' => LongLexemes::Number,
+                    'a'..='z' | 'A'..='Z' | '_' => LongLexemes::Identifier,
                     c if c.is_whitespace() => continue,
                     c => {
                         return Some(Err(Box::new(SingleTokenError {
@@ -314,6 +318,20 @@ mod lexical_analyzer {
                         return Some(Ok(Token {
                             kind: TokenKind::Number(number_literal.parse().unwrap()),
                             character: number_literal,
+                        }));
+                    }
+                    LongLexemes::Identifier => {
+                        let end_of_identifier = chars_remaining
+                            .find(|c| !matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '_'))
+                            .unwrap_or(chars_remaining.len());
+
+                        let identifier_literal = &chars_remaining[..end_of_identifier];
+
+                        self.lox_remaining = &chars_remaining[end_of_identifier..];
+
+                        return Some(Ok(Token {
+                            kind: TokenKind::Identifier,
+                            character: identifier_literal,
                         }));
                     }
                 }
