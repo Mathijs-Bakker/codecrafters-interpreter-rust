@@ -1,6 +1,5 @@
+pub(crate) use crate::lexer::scanner_error;
 use std::{error::Error, fmt};
-
-mod scanner_error;
 
 #[derive(Debug)]
 pub struct Scanner<'a> {
@@ -19,8 +18,8 @@ impl<'a> Scanner<'a> {
 
 #[derive(Debug)]
 pub struct Token<'a> {
-    kind: TokenKind,
-    character: &'a str,
+    pub kind: TokenKind,
+    pub character: &'a str,
 }
 
 impl fmt::Display for Token<'_> {
@@ -78,7 +77,7 @@ impl fmt::Display for Token<'_> {
 }
 
 #[derive(Debug)]
-enum TokenKind {
+pub(crate) enum TokenKind {
     LeftParen,
     RightParen,
     LeftBrace,

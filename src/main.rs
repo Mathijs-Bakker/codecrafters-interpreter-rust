@@ -1,8 +1,11 @@
+use parser::parser::Parser;
+
 use crate::lexer::analyzer::Scanner;
 use std::env;
 use std::fs;
 
 mod lexer;
+mod parser;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -40,6 +43,19 @@ fn main() {
 
             if scanner_error {
                 std::process::exit(65);
+            }
+        }
+        "parse" => {
+            let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
+                eprintln!("Failed to read file {}", filename);
+                String::new()
+            });
+
+            let mut parser = Parser::new(&file_contents);
+
+            match parser.parse_expression() {
+                Ok(t) => println!("{}", t.character),
+                Err(e) => eprint!("{e}"),
             }
         }
         _ => {
