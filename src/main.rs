@@ -54,7 +54,7 @@ fn main() {
             let mut parser = Parser::new(&file_contents);
 
             match parser.parse_expression() {
-                Ok(t) => println!("{}", t.character),
+                Ok(tt) => println!("{}", tt),
                 Err(e) => eprint!("{e}"),
             }
         }
