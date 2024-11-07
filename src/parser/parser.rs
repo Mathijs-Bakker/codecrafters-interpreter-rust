@@ -16,13 +16,14 @@ impl fmt::Display for ParseError {
 impl std::error::Error for ParseError {}
 
 #[derive(Debug)]
-pub enum TokenType {
+pub enum TokenType<'a> {
     Bool(bool),
     Number(f32),
     Nil,
+    String(&'a str),
 }
 
-impl fmt::Display for TokenType {
+impl<'a> fmt::Display for TokenType<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             TokenType::Bool(b) => write!(f, "{b}"),
@@ -34,6 +35,7 @@ impl fmt::Display for TokenType {
                 }
             }
             TokenType::Nil => write!(f, "nil"),
+            TokenType::String(s) => write!(f, "{}", s.trim_matches('"')),
         }
     }
 }
@@ -75,6 +77,10 @@ impl<'a> Parser<'a> {
                 kind: TokenKind::Nil,
                 ..
             } => TokenType::Nil,
+            Token {
+                kind: TokenKind::String,
+                character,
+            } => TokenType::String(character),
             _ => todo!(),
         };
 
