@@ -21,6 +21,8 @@ pub enum TokenType<'a> {
     Number(f32),
     Nil,
     String(&'a str),
+    Group(Vec<TokenType<'a>>),
+    RightParen,
 }
 
 impl<'a> fmt::Display for TokenType<'a> {
@@ -36,6 +38,16 @@ impl<'a> fmt::Display for TokenType<'a> {
             }
             TokenType::Nil => write!(f, "nil"),
             TokenType::String(s) => write!(f, "{}", s.trim_matches('"')),
+            TokenType::Group(tokentree) => {
+                write!(f, "(group")?;
+
+                for tokentype in tokentree {
+                    write!(f, " {tokentype}")?
+                }
+
+                write!(f, ")")
+            }
+            TokenType::RightParen => write!(f, ")"),
         }
     }
 }
@@ -54,13 +66,13 @@ impl<'a> Parser<'a> {
     pub fn parse_expression(&mut self) -> Result<TokenType, Box<dyn Error + Send + Sync>> {
         let expression = self.scanner.next();
 
-        let xpr = match expression {
+        let expr = match expression {
             Some(Ok(token)) => token,
             Some(Err(e)) => return Err(e),
             None => return Err(Box::new(ParseError {})),
         };
 
-        let xpr = match xpr {
+        let xpr = match expr {
             Token {
                 kind: TokenKind::True,
                 ..
@@ -81,6 +93,18 @@ impl<'a> Parser<'a> {
                 kind: TokenKind::String,
                 character,
             } => TokenType::String(character),
+            Token {
+                kind: TokenKind::LeftParen,
+                ..
+            } => {
+                let xpr = self.parse_expression()?;
+                TokenType::Group(vec![xpr])
+                // xpr
+            }
+            Token {
+                kind: TokenKind::RightParen,
+                ..
+            } => TokenType::RightParen,
             _ => todo!(),
         };
 
