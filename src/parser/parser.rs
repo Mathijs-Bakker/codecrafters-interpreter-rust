@@ -21,8 +21,7 @@ pub enum TokenType<'a> {
     Number(f32),
     Nil,
     String(&'a str),
-    Group(Vec<TokenType<'a>>),
-    RightParen,
+    Parenthesize(&'a str, Vec<TokenType<'a>>),
 }
 
 impl<'a> fmt::Display for TokenType<'a> {
@@ -38,8 +37,8 @@ impl<'a> fmt::Display for TokenType<'a> {
             }
             TokenType::Nil => write!(f, "nil"),
             TokenType::String(s) => write!(f, "{}", s.trim_matches('"')),
-            TokenType::Group(tokentree) => {
-                write!(f, "(group")?;
+            TokenType::Parenthesize(s, tokentree) => {
+                write!(f, "({s}")?;
 
                 for tokentype in tokentree {
                     write!(f, " {tokentype}")?
@@ -47,7 +46,6 @@ impl<'a> fmt::Display for TokenType<'a> {
 
                 write!(f, ")")
             }
-            TokenType::RightParen => write!(f, ")"),
         }
     }
 }
@@ -98,13 +96,22 @@ impl<'a> Parser<'a> {
                 ..
             } => {
                 let xpr = self.parse_expression()?;
-                TokenType::Group(vec![xpr])
-                // xpr
+                TokenType::Parenthesize("group", vec![xpr])
             }
             Token {
-                kind: TokenKind::RightParen,
+                kind: TokenKind::Bang,
                 ..
-            } => TokenType::RightParen,
+            } => {
+                let xpr = self.parse_expression()?;
+                TokenType::Parenthesize("!", vec![xpr])
+            }
+            Token {
+                kind: TokenKind::Minus,
+                ..
+            } => {
+                let xpr = self.parse_expression()?;
+                TokenType::Parenthesize("-", vec![xpr])
+            }
             _ => todo!(),
         };
 
